@@ -1,6 +1,13 @@
+import sys
 import shutil
 import argparse
 from pathlib import Path
+
+# Ensure project root is in sys.path
+BASE_DIR = Path(__file__).resolve().parent.parent
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
+
 from core.profile_manager import ProfileManager
 
 def export_profile(user_id: str, output_archive_path: str):

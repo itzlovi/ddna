@@ -1,10 +1,13 @@
 from typing import Union, List
+
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import IsolationForest
 from sklearn.preprocessing import RobustScaler
 from sklearn.pipeline import Pipeline
-from .model_utils import save_model, load_model, isolation_score_to_similarity
+
+from .model_utils import save_model, load_model, calibrated_score
+
 
 class MouseModel:
     def __init__(self, contamination: float = 0.05, n_estimators: int = 150, random_state: int = 42):
@@ -16,16 +19,23 @@ class MouseModel:
             ("forest", IsolationForest(
                 contamination=self.contamination,
                 n_estimators=self.n_estimators,
-                random_state=self.random_state
-            ))
+                random_state=self.random_state,
+            )),
         ])
         self.is_fitted = False
+        self.train_mean: float = 0.0
+        self.train_std: float = 1.0
 
     def fit(self, X: Union[np.ndarray, pd.DataFrame, List[List[float]]]) -> "MouseModel":
         arr = np.asarray(X, dtype=np.float64)
         if arr.ndim == 1:
             arr = arr.reshape(1, -1)
         self.pipeline.fit(arr)
+
+        train_scores = self.pipeline.score_samples(arr)
+        self.train_mean = float(np.mean(train_scores))
+        self.train_std = max(float(np.std(train_scores)), 1e-4) if len(train_scores) > 1 else 1.0
+
         self.is_fitted = True
         return self
 
@@ -35,8 +45,8 @@ class MouseModel:
         arr = np.asarray(X, dtype=np.float64)
         if arr.ndim == 1:
             arr = arr.reshape(1, -1)
-        raw_scores = self.pipeline.score_samples(arr)
-        sim = isolation_score_to_similarity(raw_scores)
+        raw = self.pipeline.score_samples(arr)
+        sim = calibrated_score(raw, self.train_mean, self.train_std)
         return float(np.mean(sim))
 
     def predict(self, X: Union[np.ndarray, pd.DataFrame, List[List[float]]]) -> np.ndarray:

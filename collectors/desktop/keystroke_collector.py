@@ -4,9 +4,12 @@ import threading
 from typing import List, Dict, Any, Optional
 from pynput import keyboard
 
+from core.config import config
+
+
 class KeystrokeCollector:
-    def __init__(self, salt: str = "ddna_salt"):
-        self._salt = salt
+    def __init__(self, salt: Optional[str] = None):
+        self._salt = salt or config.collector.salt
         self._listener: Optional[keyboard.Listener] = None
         self._press_times: Dict[str, float] = {}
         self._last_release_time: Optional[float] = None

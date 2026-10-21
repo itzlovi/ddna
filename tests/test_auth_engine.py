@@ -40,3 +40,28 @@ def test_continuous_auth_engine(temp_profile_dir):
     assert "trust_score" in res
     assert "decision" in res
     assert res["decision"] in {"ALLOW", "WARN", "LOCK"}
+
+def test_continuous_auth_engine_idle(temp_profile_dir):
+    mgr = ProfileManager(profiles_dir=temp_profile_dir)
+    engine = ContinuousAuthEngine(user_id="test_user", profile_manager=mgr)
+    idle_window = {
+        "user_id": "test_user",
+        "raw_events": {
+            "keystroke": [],
+            "mouse": []
+        }
+    }
+    # Initial score is 85.0
+    initial_score = engine.trust_engine.get_score()
+    res1 = engine.process_window(idle_window)
+    assert res1["is_idle"] is True
+    assert res1["trust_score"] == initial_score
+    assert res1["consecutive_violations"] == 0
+    assert res1["decision"] == "ALLOW"
+
+    # Multiple idle windows should not trigger a LOCK
+    for _ in range(5):
+        res = engine.process_window(idle_window)
+        assert res["is_idle"] is True
+        assert res["consecutive_violations"] == 0
+        assert res["decision"] == "ALLOW"

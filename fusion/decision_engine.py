@@ -7,7 +7,18 @@ class DecisionEngine:
         self.max_consecutive_violations = max_consecutive_violations
         self.consecutive_violations = 0
 
-    def evaluate(self, trust_score: float) -> Dict[str, Any]:
+    def evaluate(self, trust_score: float, is_idle: bool = False) -> Dict[str, Any]:
+        if is_idle:
+            decision = "ALLOW" if trust_score >= self.threshold_warn else "WARN"
+            return {
+                "decision": decision,
+                "trust_score": trust_score,
+                "consecutive_violations": self.consecutive_violations,
+                "threshold_allow": self.threshold_allow,
+                "threshold_warn": self.threshold_warn,
+                "is_idle": True
+            }
+
         if trust_score >= self.threshold_allow:
             self.consecutive_violations = max(0, self.consecutive_violations - 1)
             decision = "ALLOW"
@@ -25,7 +36,8 @@ class DecisionEngine:
             "trust_score": trust_score,
             "consecutive_violations": self.consecutive_violations,
             "threshold_allow": self.threshold_allow,
-            "threshold_warn": self.threshold_warn
+            "threshold_warn": self.threshold_warn,
+            "is_idle": False
         }
 
     def reset(self):

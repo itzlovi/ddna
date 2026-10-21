@@ -1,7 +1,13 @@
 import sys
 import argparse
-import pandas as pd
 from pathlib import Path
+
+# Ensure project root is in sys.path
+BASE_DIR = Path(__file__).resolve().parent.parent
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
+
+import pandas as pd
 from features.feature_pipeline import FeaturePipeline
 from models.keystroke_model import KeystrokeModel
 from models.mouse_model import MouseModel

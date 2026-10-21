@@ -38,3 +38,23 @@ def test_desktop_collector_collect_window():
     assert "keystroke" in window["raw_events"]
     assert "mouse" in window["raw_events"]
     collector.stop()
+
+def test_mobile_collector():
+    from collectors.mobile.main_mobile_collector import MobileCollector
+    mobile = MobileCollector(user_id="mobile_test")
+    mobile.start()
+    assert mobile._running is True
+
+    # Ingest sensor reading
+    mobile.motion.ingest_sensor_reading(ax=0.1, ay=0.2, az=9.8, gx=0.01, gy=0.02, gz=0.03)
+    mobile.touch.ingest_touch_event(action="down", x=120.0, y=340.0, pressure=1.2, area=12.0)
+
+    window = mobile.collect_window()
+    assert window["user_id"] == "mobile_test"
+    assert len(window["raw_events"]["motion"]) == 1
+    assert len(window["raw_events"]["touch"]) == 1
+    assert window["raw_events"]["motion"][0]["az"] == 9.8
+    assert window["raw_events"]["touch"][0]["type"] == "down"
+
+    mobile.stop()
+    assert mobile._running is False

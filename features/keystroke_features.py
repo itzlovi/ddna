@@ -1,4 +1,8 @@
+from collections import Counter
+
 import numpy as np
+from scipy import stats as sp_stats
+
 from typing import List, Dict, Any
 
 KEYSTROKE_FEATURE_NAMES = [
@@ -20,8 +24,18 @@ KEYSTROKE_FEATURE_NAMES = [
     "pause_rate_500ms",
     "pause_rate_1000ms",
     "max_pause_duration",
-    "pause_ratio"
+    "pause_ratio",
+    "typing_burst_mean_length",
+    "typing_burst_std_length",
+    "inter_burst_pause_mean",
+    "dwell_skewness",
+    "flight_skewness",
+    "dwell_kurtosis",
+    "flight_kurtosis",
+    "key_category_entropy",
+    "bigram_consistency",
 ]
+
 
 def extract_keystroke_features(raw_events: List[Dict[str, Any]]) -> Dict[str, float]:
     if not raw_events:
@@ -76,6 +90,52 @@ def extract_keystroke_features(raw_events: List[Dict[str, Any]]) -> Dict[str, fl
         total_pause_time = float(sum(pauses_500))
         pause_ratio = float(total_pause_time / (total_time_sec + 1e-6)) if total_time_sec > 0 else 0.0
 
+    burst_lengths = []
+    current_burst = 1
+    for dt in digraph_times:
+        if dt < 0.5:
+            current_burst += 1
+        else:
+            burst_lengths.append(current_burst)
+            current_burst = 1
+    if current_burst > 0:
+        burst_lengths.append(current_burst)
+
+    typing_burst_mean = float(np.mean(burst_lengths)) if burst_lengths else 0.0
+    typing_burst_std = float(np.std(burst_lengths)) if len(burst_lengths) > 1 else 0.0
+
+    inter_burst_pauses = [dt for dt in digraph_times if dt >= 0.5]
+    inter_burst_pause_mean = float(np.mean(inter_burst_pauses)) if inter_burst_pauses else 0.0
+
+    dwell_skew = float(sp_stats.skew(dwell_times)) if len(dwell_times) >= 4 else 0.0
+    flight_skew = float(sp_stats.skew(flight_times)) if len(flight_times) >= 4 else 0.0
+    dwell_kurt = float(sp_stats.kurtosis(dwell_times)) if len(dwell_times) >= 4 else 0.0
+    flight_kurt = float(sp_stats.kurtosis(flight_times)) if len(flight_times) >= 4 else 0.0
+
+    key_categories = []
+    for e in raw_events:
+        if e.get("type") == "press":
+            kid = e.get("key_id", "")
+            if kid.startswith("KEY_MODIFIER"):
+                key_categories.append("modifier")
+            elif kid in ("KEY_SPACE", "KEY_ENTER", "KEY_DELETE"):
+                key_categories.append("control")
+            elif kid.startswith("KEY_SPECIAL"):
+                key_categories.append("special")
+            else:
+                key_categories.append("alpha")
+
+    key_cat_entropy = 0.0
+    if key_categories:
+        counts = Counter(key_categories)
+        probs = np.array(list(counts.values()), dtype=np.float64)
+        probs = probs / probs.sum()
+        key_cat_entropy = float(sp_stats.entropy(probs, base=2))
+
+    bigram_consistency = 0.0
+    if len(digraph_times) >= 4:
+        bigram_consistency = float(np.std(digraph_times) / (np.mean(digraph_times) + 1e-6))
+
     return {
         "mean_dwell_time": mean_dwell,
         "std_dwell_time": std_dwell,
@@ -95,5 +155,14 @@ def extract_keystroke_features(raw_events: List[Dict[str, Any]]) -> Dict[str, fl
         "pause_rate_500ms": pause_rate_500ms,
         "pause_rate_1000ms": pause_rate_1000ms,
         "max_pause_duration": max_pause_duration,
-        "pause_ratio": pause_ratio
+        "pause_ratio": pause_ratio,
+        "typing_burst_mean_length": typing_burst_mean,
+        "typing_burst_std_length": typing_burst_std,
+        "inter_burst_pause_mean": inter_burst_pause_mean,
+        "dwell_skewness": dwell_skew,
+        "flight_skewness": flight_skew,
+        "dwell_kurtosis": dwell_kurt,
+        "flight_kurtosis": flight_kurt,
+        "key_category_entropy": key_cat_entropy,
+        "bigram_consistency": bigram_consistency,
     }

@@ -1,6 +1,8 @@
+import os
+import secrets
 from dataclasses import dataclass, field
 from pathlib import Path
-import os
+
 
 @dataclass
 class PathConfig:
@@ -15,6 +17,7 @@ class PathConfig:
         for path in [self.data_dir, self.raw_dir, self.processed_dir, self.profiles_dir, self.models_dir]:
             path.mkdir(parents=True, exist_ok=True)
 
+
 @dataclass
 class CollectorConfig:
     sampling_rate_ms: int = 20
@@ -22,7 +25,8 @@ class CollectorConfig:
     mouse_buffer_max_events: int = 10000
     flush_interval_seconds: float = 10.0
     anonymize_keys: bool = True
-    salt: str = "ddna_privacy_salt"
+    salt: str = field(default_factory=lambda: os.environ.get("DDNA_KEY_SALT", secrets.token_hex(16)))
+
 
 @dataclass
 class WindowConfig:
@@ -30,6 +34,9 @@ class WindowConfig:
     step_duration_seconds: float = 5.0
     min_keystrokes_per_window: int = 15
     min_mouse_events_per_window: int = 30
+    min_training_windows: int = 30
+    recommended_training_windows: int = 60
+
 
 @dataclass
 class ModelConfig:
@@ -41,6 +48,7 @@ class ModelConfig:
     n_estimators: int = 150
     random_state: int = 42
 
+
 @dataclass
 class FusionConfig:
     keystroke_weight: float = 0.50
@@ -51,6 +59,7 @@ class FusionConfig:
     threshold_warn: float = 50.0
     consecutive_violations_lock: int = 3
 
+
 @dataclass
 class AppConfig:
     paths: PathConfig = field(default_factory=PathConfig)
@@ -58,5 +67,6 @@ class AppConfig:
     window: WindowConfig = field(default_factory=WindowConfig)
     model: ModelConfig = field(default_factory=ModelConfig)
     fusion: FusionConfig = field(default_factory=FusionConfig)
+
 
 config = AppConfig()

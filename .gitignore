@@ -30,3 +30,6 @@ data/profiles/
 *.pkl
 .vscode/
 .idea/
+.pytest_cache/
+.coverage
+htmlcov/

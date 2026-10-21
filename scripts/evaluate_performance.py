@@ -1,11 +1,18 @@
+import sys
 import argparse
+from pathlib import Path
+
+# Ensure project root is in sys.path
+BASE_DIR = Path(__file__).resolve().parent.parent
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
+
 import numpy as np
 import pandas as pd
 from scipy.optimize import brentq
 from scipy.interpolate import interp1d
 from sklearn.metrics import roc_curve
-from models.keystroke_model import KeystrokeModel
-from models.mouse_model import MouseModel
+from models.model_utils import load_model
 
 def compute_eer(y_true: np.ndarray, y_scores: np.ndarray):
     fpr, tpr, thresholds = roc_curve(y_true, y_scores, pos_label=1)
@@ -26,7 +33,9 @@ def evaluate_model(model, genuine_features: np.ndarray, impostor_features: np.nd
         "EER": eer,
         "optimal_threshold": thresh,
         "mean_genuine_score": float(np.mean(gen_scores)),
-        "mean_impostor_score": float(np.mean(imp_scores))
+        "mean_impostor_score": float(np.mean(imp_scores)),
+        "genuine_count": len(gen_scores),
+        "impostor_count": len(imp_scores)
     }
 
 def main():
@@ -36,12 +45,13 @@ def main():
     parser.add_argument("--impostor", required=True)
     args = parser.parse_args()
 
-    gen_df = pd.read_csv(args.genuine)
-    imp_df = pd.read_csv(args.impostor)
+    gen_df = pd.read_csv(args.genuine).drop(columns=["label"], errors="ignore")
+    imp_df = pd.read_csv(args.impostor).drop(columns=["label"], errors="ignore")
 
-    model = KeystrokeModel.load(args.model)
+    model = load_model(args.model)
     res = evaluate_model(model, gen_df.values, imp_df.values)
-    print(res)
+    import json
+    print(json.dumps(res, indent=2))
 
 if __name__ == "__main__":
     main()

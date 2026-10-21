@@ -1,6 +1,6 @@
 import sys
 from PyQt6.QtWidgets import QSystemTrayIcon, QMenu, QApplication
-from PyQt6.QtGui import QIcon, QPixmap, QPainter, QColor
+from PyQt6.QtGui import QIcon, QPixmap, QPainter, QColor, QFont
 
 class SystemTrayManager:
     def __init__(self, main_window):
@@ -26,13 +26,22 @@ class SystemTrayManager:
         pixmap = QPixmap(32, 32)
         pixmap.fill(QColor(0, 0, 0, 0))
         painter = QPainter(pixmap)
-        painter.setBrush(QColor(41, 128, 185))
-        painter.setPen(QColor(255, 255, 255))
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setBrush(QColor(255, 255, 255))
+        painter.setPen(QColor(0, 0, 0))
         painter.drawEllipse(2, 2, 28, 28)
-        painter.drawText(8, 21, "DNA")
+        font = painter.font()
+        font.setBold(True)
+        font.setPointSize(8)
+        painter.setFont(font)
+        painter.drawText(2, 2, 28, 28, 0x0084, "DNA")  # Qt.AlignmentFlag.AlignCenter = 0x0084
         painter.end()
         return QIcon(pixmap)
 
     def _show_window(self):
         self.main_window.show()
         self.main_window.activateWindow()
+
+    def notify(self, title: str, message: str, is_warning: bool = False):
+        icon = QSystemTrayIcon.MessageIcon.Warning if is_warning else QSystemTrayIcon.MessageIcon.Information
+        self.tray_icon.showMessage(title, message, icon, 3500)

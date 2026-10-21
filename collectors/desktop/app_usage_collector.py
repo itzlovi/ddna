@@ -28,6 +28,22 @@ class AppUsageCollector:
                 return p.name()
             except Exception:
                 return "unknown"
+        elif sys.platform == "darwin":
+            try:
+                import subprocess
+                cmd = 'tell application "System Events" to get name of first application process whose frontmost is true'
+                output = subprocess.check_output(["osascript", "-e", cmd], text=True, stderr=subprocess.DEVNULL)
+                return output.strip() or "desktop"
+            except Exception:
+                return "desktop"
+        elif sys.platform.startswith("linux"):
+            try:
+                import subprocess
+                output = subprocess.check_output(["xdotool", "getwindowfocus", "getwindowpid"], text=True, stderr=subprocess.DEVNULL)
+                pid = int(output.strip())
+                return psutil.Process(pid).name()
+            except Exception:
+                return "desktop"
         return "desktop"
 
     def _loop(self):
